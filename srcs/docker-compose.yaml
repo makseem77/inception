@@ -1,0 +1,87 @@
+# Create a newtork under the name of "inception"
+networks:
+    inception:
+        name: $NETWORK_NAME
+        driver: bridge
+
+# Create Volumes
+volumes:
+    mariadb:
+        driver_opts:
+            type: none
+            o: bind
+            device: $MARIADB_VOLUME_PATH
+        name: $MARIADB_VOLUME_NAME
+    
+    wordpress:
+        driver_opts:
+            type: none
+            o: bind
+            device: $WORDPRESS_VOLUME_PATH
+        name: $WORDPRESS_VOLUME_NAME
+
+# Define services (nginx, worpdress, mariadb)
+services:
+    # nginx
+    nginx:
+        expose:
+            - $NGINX_PORT
+        container_name: $NGINX_NAME
+        image: $NGINX_IMAGE
+        build:
+            context: ./requirements/nginx/.
+        stdin_open: true
+        tty: true
+        ports:
+            - $NGINX_PORT:$NGINX_PORT
+        restart: on-failure
+        networks:
+            - $NETWORK_NAME
+        depends_on:
+            - $WORDPRESS_NAME
+        env_file:
+            - .env
+        volumes:
+            - wordpress:/var/www/html/
+
+    # mariadb
+    mariadb:
+        expose:
+            - $MARIADB_PORT
+        container_name: $MARIADB_NAME
+        image: $MARIADB_IMAGE
+        stdin_open: true
+        tty: true
+        ports:
+            - $MARIADB_PORT:$MARIADB_PORT
+        restart: on-failure
+        networks:
+            - $NETWORK_NAME
+        env_file:
+            - .env
+        volumes:
+            - mariadb:/var/lib/mysql
+        build:
+            context: ./requirements/mariadb/.
+    
+    # wordpress
+    wordpress:
+        expose:
+            - $WORDPRESS_PORT
+        container_name: $WORDPRESS_NAME
+        image: $WORDPRESS_IMAGE
+        stdin_open: true
+        tty: true
+        restart: on-failure
+        ports:
+            - $WORDPRESS_PORT:$WORDPRESS_PORT
+        networks:
+            - $NETWORK_NAME
+        env_file:
+            - .env
+        volumes:
+            - wordpress:/var/www/html/
+        build:
+            context: ./requirements/wordpress/.
+        depends_on:
+            - $MARIADB_NAME
